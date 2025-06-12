@@ -66,3 +66,36 @@ func TestBtreeDelete(t *testing.T) {
 	res4 := bt.Delete([]byte("a"))
 	assert.True(t, res4)
 }
+
+func TestBTree_Iterator(t *testing.T) {
+	bt1 := NewBTree()
+	// 1. BTree 为空
+	iter1 := bt1.Iterator(false)
+	assert.Equal(t, false, iter1.Valid())
+
+	// 2， BTree 有数据的情况
+	bt1.Put([]byte("a"), &data.LogRecordPos{
+		Fid:    1,
+		Offset: 10,
+	})
+	iter2 := bt1.Iterator(false)
+	t.Log(iter2.Valid())
+	assert.Equal(t, true, iter2.Valid())
+	assert.NotNil(t, iter2.Key())
+	assert.NotNil(t, iter2.Value())
+	iter2.Next()
+	assert.Equal(t, false, iter2.Valid())
+
+	// 3. BTree 存在多条数据
+	bt1.Put([]byte("111"), &data.LogRecordPos{Fid: 1, Offset: 10})
+	bt1.Put([]byte("333"), &data.LogRecordPos{Fid: 1, Offset: 10})
+	bt1.Put([]byte("222"), &data.LogRecordPos{Fid: 1, Offset: 10})
+	iter3 := bt1.Iterator(false)
+	for iter3.Rewind(); iter3.Valid(); iter3.Next() {
+		t.Log(string(iter3.Key()))
+	}
+	iter3 = bt1.Iterator(true)
+	for iter3.Rewind(); iter3.Valid(); iter3.Next() {
+		t.Log(string(iter3.Key()))
+	}
+}

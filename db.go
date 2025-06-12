@@ -57,6 +57,10 @@ func Open(options Options) (*DB, error) {
 	return db, nil
 }
 
+func (db *DB) Close() error {
+	return nil
+}
+
 // Put 写入 Key/Value 数据，Key 不能为空
 func (db *DB) Put(key []byte, value []byte) error {
 	// 判断 key 是否为空
@@ -83,7 +87,6 @@ func (db *DB) Put(key []byte, value []byte) error {
 	}
 
 	return nil
-
 }
 
 // Get 根据 key 获取对应的 value
