@@ -79,7 +79,7 @@ func TestBTree_Iterator(t *testing.T) {
 		Offset: 10,
 	})
 	iter2 := bt1.Iterator(false)
-	t.Log(iter2.Valid())
+	// t.Log(iter2.Valid())
 	assert.Equal(t, true, iter2.Valid())
 	assert.NotNil(t, iter2.Key())
 	assert.NotNil(t, iter2.Value())
@@ -92,10 +92,22 @@ func TestBTree_Iterator(t *testing.T) {
 	bt1.Put([]byte("222"), &data.LogRecordPos{Fid: 1, Offset: 10})
 	iter3 := bt1.Iterator(false)
 	for iter3.Rewind(); iter3.Valid(); iter3.Next() {
-		t.Log(string(iter3.Key()))
+		assert.NotNil(t, iter3.Key())
 	}
-	iter3 = bt1.Iterator(true)
+	iter4 := bt1.Iterator(true)
 	for iter3.Rewind(); iter3.Valid(); iter3.Next() {
-		t.Log(string(iter3.Key()))
+		assert.NotNil(t, iter4.Key())
+	}
+
+	// 4. 测试 seek
+	iter5 := bt1.Iterator(false)
+	for iter5.Seek([]byte("2")); iter5.Valid(); iter5.Next() {
+		assert.NotNil(t, iter5.Key())
+	}
+
+	// 5. 反向测试 seek
+	iter6 := bt1.Iterator(true)
+	for iter6.Seek([]byte("2")); iter6.Valid(); iter6.Next() {
+		t.Log(string(iter6.Key()))
 	}
 }

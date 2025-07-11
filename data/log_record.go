@@ -8,8 +8,9 @@ import (
 type LogRecordType = byte
 
 const (
-	LogRecordNormal LogRecordType = iota // 普通数据
-	LogRecordDelete                      // 删除数据
+	LogRecordNormal    LogRecordType = iota // 普通数据
+	LogRecordDelete                         // 删除数据
+	LogRecordTxnFinish                      // 事务提交完成
 )
 
 // 头部字节
@@ -18,15 +19,14 @@ const (
 //	4 + 1 + 5 + 5 = 15
 const maxLogRecordHeaderSize = crc32.Size + 1 + binary.MaxVarintLen32*2
 
-// 写入到数据文件的记录
-// 追加写，类似于日志，所以叫 LogRecord
+// LogRecord 写入到数据文件的记录
 type LogRecord struct {
 	Key  []byte
 	Val  []byte
 	Type LogRecordType
 }
 
-// LogRecord 的头部信息
+// LogRecordHeader 记录 LogRecord 的头部信息
 type LogRecordHeader struct {
 	crc        uint32        // crc 校验和
 	recordType LogRecordType // 记录类型
@@ -38,6 +38,12 @@ type LogRecordHeader struct {
 type LogRecordPos struct {
 	Fid    uint32 // 文件ID，表示将数据存储在哪个文件中
 	Offset int64  // 偏移，表示将数据存储在文件中的偏移位置
+}
+
+// TransactionRecord 暂存事务相关数据
+type TransactionRecord struct {
+	Record *LogRecord
+	Pos    *LogRecordPos
 }
 
 // EncodeLogRecord 对 logRecord 编码，返回字节数组及其长度
@@ -71,7 +77,7 @@ func EncodeLogRecord(logRecord *LogRecord) ([]byte, int64) {
 	return encBytes, int64(size)
 }
 
-// 对字节数组中的 Header 信息进行解码
+// decodeLogRecordHeader 对字节数组中的 Header 信息进行解码
 func decodeLogRecordHeader(buf []byte) (*LogRecordHeader, int64) {
 	if len(buf) <= 4 {
 		return nil, 0
@@ -93,6 +99,7 @@ func decodeLogRecordHeader(buf []byte) (*LogRecordHeader, int64) {
 	return header, int64(index)
 }
 
+// getLogRecordCRC 获取 logRecord 的 CRC 校验和
 func getLogRecordCRC(logRecord *LogRecord, header []byte) uint32 {
 	if logRecord == nil {
 		return 0

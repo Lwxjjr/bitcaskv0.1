@@ -9,6 +9,17 @@ type Options struct {
 	SyncWrites   bool        // 是否每次同步写入数据文件
 }
 
+// IteratorOptions 索引迭代器配置
+type IteratorOptions struct {
+	Prefix  []byte // 遍历前缀为指定值的 Key，默认为空
+	Reverse bool   // 是否倒序
+}
+
+type WriteBatchOptions struct {
+	MaxBatchSize uint // 一个批次最大写入数据量
+	SyncWrites   bool // 是否同步写入数据文件
+}
+
 type IndexerType int8
 
 const (
@@ -23,4 +34,14 @@ var DefaultOptions = Options{
 	DataFileSize: 256 * 1024 * 1024, // 默认数据文件大小为 256MB
 	SyncWrites:   true,              // 默认每次写入都同步到磁盘
 	IndexType:    BTree,             // 默认使用 B 树索引
+}
+
+var DefaultIteratorOptions = IteratorOptions{
+	Prefix:  nil,
+	Reverse: false,
+}
+
+var DefaultWriteBatchOptions = WriteBatchOptions{
+	MaxBatchSize: 1024,
+	SyncWrites:   true,
 }

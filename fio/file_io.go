@@ -2,7 +2,7 @@ package fio
 
 import "os"
 
-// 标准系统文件 IO
+// FileIO 标准系统文件 IO
 type FileIO struct {
 	fd *os.File // 系统文件描述符
 }

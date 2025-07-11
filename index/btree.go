@@ -49,6 +49,10 @@ func (bt *BTree) Delete(key []byte) bool {
 	return oldItem != nil
 }
 
+func (bt *BTree) Size() int {
+	return bt.tree.Len()
+}
+
 func (bt *BTree) Iterator(reverse bool) Iterator {
 	if bt.tree == nil {
 		return nil
@@ -77,8 +81,9 @@ func newBTreeIterator(tree *btree.BTree, reverse bool) *btreeIterator {
 	}
 	if reverse {
 		tree.Descend(saveValues)
+	} else {
+		tree.Ascend(saveValues)
 	}
-	tree.Ascend(saveValues)
 	return &btreeIterator{
 		currIndex: 0,
 		reverse:   reverse,

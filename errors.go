@@ -14,4 +14,8 @@ var (
 	ErrDataFileNotFound = errors.New("data file not found")
 	// 文件损坏
 	ErrDataDirectCorrupted = errors.New("the database directory maybe corrupted")
+	// 批量写入超出限制
+	ErrExceedMaxBatchSize = errors.New("exceed max batch size")
+	// Merge 操作正在进行
+	ErrMergeIsProgress = errors.New("merge is in progress, try again later")
 )
