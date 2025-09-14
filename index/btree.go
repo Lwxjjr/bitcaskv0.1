@@ -1,10 +1,11 @@
 package index
 
 import (
-	"bitcask-go/data"
 	"bytes"
 	"sort"
 	"sync"
+
+	"bitcask-go/data"
 
 	"github.com/google/btree"
 )
@@ -24,12 +25,15 @@ func NewBTree() *BTree {
 	}
 }
 
-func (bt *BTree) Put(key []byte, pos *data.LogRecordPos) bool {
+func (bt *BTree) Put(key []byte, pos *data.LogRecordPos) *data.LogRecordPos {
 	it := &Item{key: key, pos: pos}
 	bt.lock.Lock()
-	bt.tree.ReplaceOrInsert(it)
+	item := bt.tree.ReplaceOrInsert(it)
 	bt.lock.Unlock()
-	return true
+	if item == nil {
+		return nil
+	}
+	return item.(*Item).pos
 }
 
 func (bt *BTree) Get(key []byte) *data.LogRecordPos {
@@ -41,16 +45,23 @@ func (bt *BTree) Get(key []byte) *data.LogRecordPos {
 	return btreeItem.(*Item).pos
 }
 
-func (bt *BTree) Delete(key []byte) bool {
+func (bt *BTree) Delete(key []byte) (*data.LogRecordPos, bool) {
 	it := &Item{key: key}
 	bt.lock.Lock()
 	oldItem := bt.tree.Delete(it)
 	bt.lock.Unlock()
-	return oldItem != nil
+	if oldItem == nil {
+		return nil, false
+	}
+	return oldItem.(*Item).pos, true
 }
 
 func (bt *BTree) Size() int {
 	return bt.tree.Len()
+}
+
+func (bt *BTree) Close() error {
+	return nil
 }
 
 func (bt *BTree) Iterator(reverse bool) Iterator {

@@ -1,10 +1,12 @@
-package bitcask_go
+package engine
 
 import (
-	"bitcask-go/data"
+	"bitcask-go"
 	"encoding/binary"
 	"sync"
 	"sync/atomic"
+
+	"bitcask-go/data"
 )
 
 const nonTransactionSeqNo uint64 = 0
@@ -15,11 +17,15 @@ var txnFinKey = []byte("txn_fin")
 type WriteBatch struct {
 	mu            *sync.Mutex
 	db            *DB
-	options       WriteBatchOptions
+	options       bitcask_go.WriteBatchOptions
 	pendingWrites map[string]*data.LogRecord // 暂存用户写入的数据
 }
 
-func (db *DB) NewWriteBatch(options WriteBatchOptions) *WriteBatch {
+func (db *DB) NewWriteBatch(options bitcask_go.WriteBatchOptions) *WriteBatch {
+	// 因为这样判断不了事务序列号
+	if db.options.IndexType == bitcask_go.BPTree && !db.seqNoFileExist && !db.isInitial {
+		panic("cannot use write engine, seq no file not exists")
+	}
 	return &WriteBatch{
 		mu:            new(sync.Mutex),
 		db:            db,
@@ -31,7 +37,7 @@ func (db *DB) NewWriteBatch(options WriteBatchOptions) *WriteBatch {
 // Put 批量写数据
 func (wb *WriteBatch) Put(key []byte, value []byte) error {
 	if len(key) == 0 {
-		return ErrKeyIsEmpty
+		return bitcask_go.ErrKeyIsEmpty
 	}
 	wb.mu.Lock()
 	defer wb.mu.Unlock()
@@ -46,7 +52,7 @@ func (wb *WriteBatch) Put(key []byte, value []byte) error {
 
 func (wb *WriteBatch) Delete(key []byte) error {
 	if len(key) == 0 {
-		return ErrKeyIsEmpty
+		return bitcask_go.ErrKeyIsEmpty
 	}
 	wb.mu.Lock()
 	defer wb.mu.Unlock()
@@ -79,7 +85,7 @@ func (wb *WriteBatch) Commit() error {
 	}
 
 	if len(wb.pendingWrites) > int(wb.options.MaxBatchSize) {
-		return ErrExceedMaxBatchSize
+		return bitcask_go.ErrExceedMaxBatchSize
 	}
 
 	// 加锁保证事务提交串行化
@@ -93,7 +99,7 @@ func (wb *WriteBatch) Commit() error {
 	positions := make(map[string]*data.LogRecordPos)
 	for _, record := range wb.pendingWrites {
 		logRecordPos, err := wb.db.appendLogRecord(&data.LogRecord{
-			Key:  logRecordKeyWithSeq(record.Key, seqNo),
+			Key:  logRecordKeyWithSeq(seqNo, record.Key),
 			Val:  record.Val,
 			Type: record.Type,
 		})
@@ -105,7 +111,7 @@ func (wb *WriteBatch) Commit() error {
 
 	// 写一条标识事务完成的数据
 	finishedRecord := &data.LogRecord{
-		Key:  logRecordKeyWithSeq(txnFinKey, seqNo),
+		Key:  logRecordKeyWithSeq(seqNo, txnFinKey),
 		Type: data.LogRecordTxnFinish,
 	}
 	if _, err := wb.db.appendLogRecord(finishedRecord); err != nil {
@@ -122,11 +128,15 @@ func (wb *WriteBatch) Commit() error {
 	// 更新内存索引
 	for _, record := range wb.pendingWrites {
 		pos := positions[string(record.Key)]
+		var oldPos *data.LogRecordPos
 		if record.Type == data.LogRecordNormal {
-			wb.db.index.Put(record.Key, pos)
+			oldPos = wb.db.index.Put(record.Key, pos)
 		}
 		if record.Type == data.LogRecordDelete {
-			wb.db.index.Delete(record.Key)
+			oldPos, _ = wb.db.index.Delete(record.Key)
+		}
+		if oldPos != nil {
+			wb.db.reclaimSize += int64(oldPos.Size)
 		}
 	}
 
@@ -136,8 +146,8 @@ func (wb *WriteBatch) Commit() error {
 	return nil
 }
 
-// key + SeqNo 编码
-func logRecordKeyWithSeq(key []byte, seqNo uint64) []byte {
+// SeqNo + Key 编码
+func logRecordKeyWithSeq(seqNo uint64, key []byte) []byte {
 	seq := make([]byte, binary.MaxVarintLen64)
 	n := binary.PutUvarint(seq, seqNo)
 

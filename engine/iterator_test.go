@@ -1,6 +1,7 @@
-package bitcask_go
+package engine
 
 import (
+	"bitcask-go"
 	"bitcask-go/utils"
 	"github.com/stretchr/testify/assert"
 	"os"
@@ -8,25 +9,25 @@ import (
 )
 
 // 测试完成之后销毁 DB 数据目录
-func destroyDB(db *DB) {
-	if db != nil {
-		if db.activeFile != nil {
-			_ = db.Close()
-		}
-		for _, of := range db.olderFiles {
-			if of != nil {
-				_ = of.Close()
-			}
-		}
-		err := os.RemoveAll(db.options.DirPath)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
+//func destroyDB(db *DB) {
+//	if db != nil {
+//		if db.activeFile != nil {
+//			_ = db.Close()
+//		}
+//		for _, of := range db.olderFiles {
+//			if of != nil {
+//				_ = of.Close()
+//			}
+//		}
+//		err := os.RemoveAll(db.options.DirPath)
+//		if err != nil {
+//			panic(err)
+//		}
+//	}
+//}
 
 func TestDB_NewIterator(t *testing.T) {
-	opts := DefaultOptions
+	opts := bitcask_go.DefaultOptions
 	dir, _ := os.MkdirTemp("", "bitcask-go-iterator-1")
 	opts.DirPath = dir
 	opts.DataFileSize = 64 * 1024 * 1024
@@ -35,13 +36,13 @@ func TestDB_NewIterator(t *testing.T) {
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
-	iterator := db.NewIterator(IteratorOptions{})
+	iterator := db.NewIterator(bitcask_go.IteratorOptions{})
 	assert.NotNil(t, iterator)
 	assert.Equal(t, false, iterator.Valid())
 }
 
 func TestDB_Iterator_One_Value(t *testing.T) {
-	opts := DefaultOptions
+	opts := bitcask_go.DefaultOptions
 	dir, _ := os.MkdirTemp("", "bitcask-go-iterator-2")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -52,7 +53,7 @@ func TestDB_Iterator_One_Value(t *testing.T) {
 	err = db.Put(utils.GetTestKey(10), utils.GetTestKey(10))
 	assert.Nil(t, err)
 
-	iterator := db.NewIterator(DefaultIteratorOptions)
+	iterator := db.NewIterator(bitcask_go.DefaultIteratorOptions)
 	defer iterator.Close()
 	assert.NotNil(t, iterator)
 	assert.Equal(t, true, iterator.Valid())
@@ -63,7 +64,7 @@ func TestDB_Iterator_One_Value(t *testing.T) {
 }
 
 func TestDB_Iterator_Multi_Values(t *testing.T) {
-	opts := DefaultOptions
+	opts := bitcask_go.DefaultOptions
 	dir, _ := os.MkdirTemp("", "bitcask-go-iterator-3")
 	opts.DirPath = dir
 	db, err := Open(opts)
@@ -83,7 +84,7 @@ func TestDB_Iterator_Multi_Values(t *testing.T) {
 	assert.Nil(t, err)
 
 	// 正向迭代
-	iter1 := db.NewIterator(DefaultIteratorOptions)
+	iter1 := db.NewIterator(bitcask_go.DefaultIteratorOptions)
 	for iter1.Rewind(); iter1.Valid(); iter1.Next() {
 		assert.NotNil(t, iter1.Key())
 	}
@@ -94,7 +95,7 @@ func TestDB_Iterator_Multi_Values(t *testing.T) {
 	iter1.Close()
 
 	// 反向迭代
-	iterOpts1 := DefaultIteratorOptions
+	iterOpts1 := bitcask_go.DefaultIteratorOptions
 	iterOpts1.Reverse = true
 	iter2 := db.NewIterator(iterOpts1)
 	for iter2.Rewind(); iter2.Valid(); iter2.Next() {
@@ -107,7 +108,7 @@ func TestDB_Iterator_Multi_Values(t *testing.T) {
 	iter2.Close()
 
 	// 指定了 prefix
-	iterOpts2 := DefaultIteratorOptions
+	iterOpts2 := bitcask_go.DefaultIteratorOptions
 	iterOpts2.Prefix = []byte("aee")
 	iter3 := db.NewIterator(iterOpts2)
 	for iter3.Rewind(); iter3.Valid(); iter3.Next() {

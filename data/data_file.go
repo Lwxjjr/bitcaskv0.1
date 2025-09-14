@@ -1,20 +1,25 @@
 package data
 
 import (
-	"bitcask-go/fio"
 	"errors"
 	"fmt"
 	"hash/crc32"
 	"io"
 	"path/filepath"
+
+	"bitcask-go/fio"
 )
 
-var (
-	ErrInvalidCRC = errors.New("invalid crc value, log record may be corrupted") // CRC 校验错误
-)
+var ErrInvalidCRC = errors.New("invalid crc value, log record may be corrupted") // CRC 校验错误
+// Merge 操作正在进行
 
-// DataFileNameSuffix 存储文件的后缀名
-const DataFileNameSuffix = ".data"
+const (
+	// DataFileNameSuffix 存储文件的后缀名
+	DataFileNameSuffix    = ".data"
+	HintFileName          = "hint"
+	MergeFinishedFileName = "merge-finished"
+	SeqNoFileName         = "seq-No"
+)
 
 // DataFile 数据文件
 type DataFile struct {
@@ -24,10 +29,36 @@ type DataFile struct {
 }
 
 // OpenDataFile 打开新的数据文件
-func OpenDataFile(dirPath string, fileId uint32) (*DataFile, error) {
-	fileName := filepath.Join(dirPath, fmt.Sprintf("%09d", fileId)+DataFileNameSuffix)
+func OpenDataFile(dirPath string, fileId uint32, ioType fio.FileIOType) (*DataFile, error) {
+	fileName := GetDataFileName(dirPath, fileId)
+	return newDataFile(fileName, fileId, ioType)
+}
+
+// OpenHintFile 打开 Hint索引文件
+func OpenHintFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, HintFileName)
+	return newDataFile(fileName, 0, fio.StandardFIO)
+}
+
+// OpenMergeFinishedFile 打开标识 merge 完成的文件
+func OpenMergeFinishedFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, MergeFinishedFileName)
+	return newDataFile(fileName, 0, fio.StandardFIO)
+}
+
+// OpenSeqNoFile 存储事务序列号的文件
+func OpenSeqNoFile(dirPath string) (*DataFile, error) {
+	fileName := filepath.Join(dirPath, SeqNoFileName)
+	return newDataFile(fileName, 0, fio.StandardFIO)
+}
+
+func GetDataFileName(dirPath string, fileId uint32) string {
+	return filepath.Join(dirPath, fmt.Sprintf("%09d", fileId)+DataFileNameSuffix)
+}
+
+func newDataFile(fileName string, fileId uint32, ioType fio.FileIOType) (*DataFile, error) {
 	// 初始化 IO 管理器
-	ioManager, err := fio.NewIOManager(fileName)
+	ioManager, err := fio.NewIOManager(fileName, ioType)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +102,7 @@ func (df *DataFile) ReadLogRecord(offset int64) (*LogRecord, int64, error) {
 		Type: header.recordType,
 	}
 	keySize, valueSize := int64(header.keySize), int64(header.valSize)
-	var recordSize = headerSize + keySize + valueSize
+	recordSize := headerSize + keySize + valueSize
 	if keySize > 0 || valueSize > 0 {
 		kvBuf, err := df.readNBytes(keySize+valueSize, offset+headerSize)
 		if err != nil {
@@ -102,6 +133,16 @@ func (df *DataFile) Write(buf []byte) error {
 	return nil
 }
 
+// WriteHint 写入索引信息到 Hint 文件中
+func (df *DataFile) WriteHint(key []byte, pos *LogRecordPos) error {
+	record := &LogRecord{
+		Key: key,
+		Val: EncodeLogRecordPos(pos),
+	}
+	encRecord, _ := EncodeLogRecord(record)
+	return df.Write(encRecord)
+}
+
 func (df *DataFile) Sync() error {
 	return df.IoManager.Sync()
 }
@@ -114,4 +155,16 @@ func (df *DataFile) readNBytes(n, offset int64) (b []byte, err error) {
 	b = make([]byte, n)
 	_, err = df.IoManager.Read(b, offset)
 	return
+}
+
+func (df *DataFile) SetIOManager(dirPath string, ioType fio.FileIOType) error {
+	if err := df.IoManager.Close(); err != nil {
+		return err
+	}
+	ioManager, err := fio.NewIOManager(GetDataFileName(dirPath, df.FileId), ioType)
+	if err != nil {
+		return err
+	}
+	df.IoManager = ioManager
+	return nil
 }

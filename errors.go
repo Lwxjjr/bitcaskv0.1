@@ -15,7 +15,9 @@ var (
 	// 文件损坏
 	ErrDataDirectCorrupted = errors.New("the database directory maybe corrupted")
 	// 批量写入超出限制
-	ErrExceedMaxBatchSize = errors.New("exceed max batch size")
-	// Merge 操作正在进行
-	ErrMergeIsProgress = errors.New("merge is in progress, try again later")
+	ErrExceedMaxBatchSize    = errors.New("exceed max engine size")
+	ErrMergeIsProgress       = errors.New("merge is in progress, try again later")
+	ErrDatabaseIsUsing       = errors.New("the database directory is used by another process")
+	ErrMergeRatioUnreached   = errors.New("the merge ratio is not reached")
+	ErrNoEnoughSpaceForMerge = errors.New("no enough disk space for merge")
 )

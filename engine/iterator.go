@@ -1,18 +1,19 @@
-package bitcask_go
+package engine
 
 import (
+	"bitcask-go"
 	"bytes"
 
 	"bitcask-go/index"
 )
 
 type Iterator struct {
-	indexIter index.Iterator  // 索引迭代器
-	options   IteratorOptions // 迭代器选项
-	db        *DB             // 数据库实例
+	indexIter index.Iterator             // 索引迭代器
+	options   bitcask_go.IteratorOptions // 迭代器选项
+	db        *DB                        // 数据库实例
 }
 
-func (db *DB) NewIterator(options IteratorOptions) *Iterator {
+func (db *DB) NewIterator(options bitcask_go.IteratorOptions) *Iterator {
 	indexIter := db.index.Iterator(options.Reverse)
 	return &Iterator{
 		db:        db,
