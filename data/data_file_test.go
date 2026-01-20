@@ -1,47 +1,48 @@
 package data
 
 import (
+	"bitcask-go/fio"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDataFile(t *testing.T) {
-	dataFile1, err := OpenDataFile(os.TempDir(), 0)
+func TestOpenDataFile(t *testing.T) {
+	dataFile1, err := OpenDataFile(os.TempDir(), 0, fio.StandardFIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile1)
 
-	t.Log(os.TempDir())
-
-	dataFile2, err := OpenDataFile(os.TempDir(), 1)
+	dataFile2, err := OpenDataFile(os.TempDir(), 111, fio.StandardFIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile2)
 
-	t.Log(os.TempDir())
+	dataFile3, err := OpenDataFile(os.TempDir(), 111, fio.StandardFIO)
+	assert.Nil(t, err)
+	assert.NotNil(t, dataFile3)
 }
 
 func TestDataFile_Write(t *testing.T) {
-	dataFile, err := OpenDataFile(os.TempDir(), 0)
+	dataFile, err := OpenDataFile(os.TempDir(), 0, fio.StandardFIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
-	err = dataFile.Write([]byte("hello world"))
+	err = dataFile.Write([]byte("aaa"))
 	assert.Nil(t, err)
 
-	err = dataFile.Write([]byte("abc"))
+	err = dataFile.Write([]byte("bbb"))
 	assert.Nil(t, err)
 
-	err = dataFile.Write([]byte("111"))
+	err = dataFile.Write([]byte("ccc"))
 	assert.Nil(t, err)
 }
 
 func TestDataFile_Close(t *testing.T) {
-	dataFile, err := OpenDataFile(os.TempDir(), 2)
+	dataFile, err := OpenDataFile(os.TempDir(), 123, fio.StandardFIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
-	err = dataFile.Write([]byte("hello world"))
+	err = dataFile.Write([]byte("aaa"))
 	assert.Nil(t, err)
 
 	err = dataFile.Close()
@@ -49,11 +50,11 @@ func TestDataFile_Close(t *testing.T) {
 }
 
 func TestDataFile_Sync(t *testing.T) {
-	dataFile, err := OpenDataFile(os.TempDir(), 3)
+	dataFile, err := OpenDataFile(os.TempDir(), 456, fio.StandardFIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
-	err = dataFile.Write([]byte("hello world"))
+	err = dataFile.Write([]byte("aaa"))
 	assert.Nil(t, err)
 
 	err = dataFile.Sync()
@@ -61,26 +62,26 @@ func TestDataFile_Sync(t *testing.T) {
 }
 
 func TestDataFile_ReadLogRecord(t *testing.T) {
-	dataFile, err := OpenDataFile(os.TempDir(), 222)
+	dataFile, err := OpenDataFile(os.TempDir(), 6666, fio.StandardFIO)
 	assert.Nil(t, err)
 	assert.NotNil(t, dataFile)
 
-	// 单条LogRecord
+	// 只有一条 LogRecord
 	rec1 := &LogRecord{
 		Key: []byte("name"),
-		Val: []byte("bitcask"),
+		Val: []byte("bitcask kv go"),
 	}
 	res1, size1 := EncodeLogRecord(rec1)
-	dataFile.Write(res1)
+	err = dataFile.Write(res1)
 	assert.Nil(t, err)
-	t.Log(size1)
 
 	readRec1, readSize1, err := dataFile.ReadLogRecord(0)
 	assert.Nil(t, err)
-	assert.NotNil(t, rec1, readRec1)
+	assert.Equal(t, rec1, readRec1)
 	assert.Equal(t, size1, readSize1)
+	t.Log(readSize1)
 
-	// 多条LogRecord
+	// 多条 LogRecord，从不同的位置读取
 	rec2 := &LogRecord{
 		Key: []byte("name"),
 		Val: []byte("a new value"),
@@ -103,11 +104,9 @@ func TestDataFile_ReadLogRecord(t *testing.T) {
 	res3, size3 := EncodeLogRecord(rec3)
 	err = dataFile.Write(res3)
 	assert.Nil(t, err)
-	t.Log(size3)
 
 	readRec3, readSize3, err := dataFile.ReadLogRecord(size1 + size2)
 	assert.Nil(t, err)
 	assert.Equal(t, rec3, readRec3)
 	assert.Equal(t, size3, readSize3)
-
 }

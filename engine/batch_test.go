@@ -1,11 +1,12 @@
 package engine
 
 import (
-	"bitcask-go"
+	bitcask_go "bitcask-go"
 	"bitcask-go/utils"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func Test_WriteBatch1(t *testing.T) {
@@ -13,7 +14,7 @@ func Test_WriteBatch1(t *testing.T) {
 	dir, _ := os.MkdirTemp("", "bitcask-go-engine-1")
 	opts.DirPath = dir
 	db, err := Open(opts)
-	defer bitcask_go.destroyDB(db)
+	defer destroyDB(db)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -51,7 +52,7 @@ func Test_WriteBatch2(t *testing.T) {
 	dir, _ := os.MkdirTemp("", "bitcask-go-engine-2")
 	opts.DirPath = dir
 	db, err := Open(opts)
-	defer bitcask_go.destroyDB(db)
+	defer destroyDB(db)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
@@ -89,7 +90,7 @@ func Test_WriteBatch3(t *testing.T) {
 	dir, _ := os.MkdirTemp("", "bitcask-go-engine-3")
 	opts.DirPath = dir
 	db, err := Open(opts)
-	defer bitcask_go.destroyDB(db)
+	defer destroyDB(db)
 	assert.Nil(t, err)
 	assert.NotNil(t, db)
 
